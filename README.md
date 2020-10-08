@@ -1,3 +1,5 @@
+This sample illustrates a simple UWP app that uses APIs from the [Windows.Graphics.Capture](https://docs.microsoft.com/en-us/uwp/api/windows.graphics.capture) namespace to capture the contents of the screen or window to a video file. For more a walkthrough of the concepts and techniques used in this sample, see [Screen capture to video](https://docs.microsoft.com/en-us/windows/uwp/audio-video-camera/screen-capture-video)
+
 
 # Contributing
 
