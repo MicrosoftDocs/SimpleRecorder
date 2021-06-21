@@ -53,6 +53,17 @@ namespace CaptureEncoder
                     encodingProfile.Video.FrameRate.Denominator = 1;
                     encodingProfile.Video.PixelAspectRatio.Numerator = 1;
                     encodingProfile.Video.PixelAspectRatio.Denominator = 1;
+
+
+                    encodingProfile.Audio.SampleRate = 960;
+                    Debug.WriteLine("01");
+                    encodingProfile.Audio.Subtype = "AAC";
+                    encodingProfile.Audio.Bitrate = 16;
+                    encodingProfile.Audio.ChannelCount = 2;
+                    Debug.WriteLine("02");
+
+
+
                     var transcode = await _transcoder.PrepareMediaStreamSourceTranscodeAsync(_mediaStreamSource, stream, encodingProfile);
 
                     await transcode.TranscodeAsync();
@@ -90,9 +101,11 @@ namespace CaptureEncoder
             // Describe our input: uncompressed BGRA8 buffers
             var videoProperties = VideoEncodingProperties.CreateUncompressed(MediaEncodingSubtypes.Bgra8, (uint)width, (uint)height);
             _videoDescriptor = new VideoStreamDescriptor(videoProperties);
-
+            // Describe audio input
+            var audioProperties = AudioEncodingProperties.CreateMp3(960, 2, 16);
+            _audioDescriptor = new AudioStreamDescriptor(audioProperties);
             // Create our MediaStreamSource
-            _mediaStreamSource = new MediaStreamSource(_videoDescriptor);
+            _mediaStreamSource = new MediaStreamSource(_videoDescriptor, _audioDescriptor);
             _mediaStreamSource.BufferTime = TimeSpan.FromSeconds(0);
             _mediaStreamSource.Starting += OnMediaStreamSourceStarting;
             _mediaStreamSource.SampleRequested += OnMediaStreamSourceSampleRequested;
@@ -108,20 +121,36 @@ namespace CaptureEncoder
             {
                 try
                 {
-                    using (var frame = _frameGenerator.WaitForNewFrame())
+
+                    if (args.Request.StreamDescriptor.GetType() == typeof(VideoStreamDescriptor))
                     {
-                        if (frame == null)
+                        //request video
+                        using (var frame = _frameGenerator.WaitForNewFrame())
                         {
-                            args.Request.Sample = null;
-                            DisposeInternal();
-                            return;
+                            if (frame == null)
+                            {
+                                args.Request.Sample = null;
+                                DisposeInternal();
+                                return;
+                            }
+
+                            var timeStamp = frame.SystemRelativeTime;
+
+                            var sample = MediaStreamSample.CreateFromDirect3D11Surface(frame.Surface, timeStamp);
+                            args.Request.Sample = sample;
                         }
-
-                        var timeStamp = frame.SystemRelativeTime;
-
-                        var sample = MediaStreamSample.CreateFromDirect3D11Surface(frame.Surface, timeStamp);
-                        args.Request.Sample = sample;                       
                     }
+                    else if (args.Request.StreamDescriptor.GetType() == typeof(AudioStreamDescriptor))
+                    {
+                        //request audio
+
+
+                    }
+
+
+
+
+                    
                 }
                 catch (Exception e)
                 {
@@ -153,6 +182,7 @@ namespace CaptureEncoder
         private CaptureFrameWait _frameGenerator;
 
         private VideoStreamDescriptor _videoDescriptor;
+        private AudioStreamDescriptor _audioDescriptor;
         private MediaStreamSource _mediaStreamSource;
         private MediaTranscoder _transcoder;
         private bool _isRecording;
