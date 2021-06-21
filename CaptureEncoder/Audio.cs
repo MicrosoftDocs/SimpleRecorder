@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Media.Audio;
@@ -61,7 +62,7 @@ namespace CaptureEncoder
 
         AudioDeviceInputNode deviceInputNode;
 
-        private async Task CreateDeviceInputNode()
+        public async Task CreateDeviceInputNode()
         {
             // Create a device output node
             CreateAudioDeviceInputNodeResult result = await audioGraph.CreateDeviceInputNodeAsync(Windows.Media.Capture.MediaCategory.Media);
@@ -304,6 +305,14 @@ namespace CaptureEncoder
 
 
 
+    }
+
+    [ComImport]
+    [Guid("5B0D3235-4DBA-4D44-865E-8F1D0E4FD04D")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    unsafe interface IMemoryBufferByteAccess
+    {
+        void GetBuffer(out byte* buffer, out uint capacity);
     }
 
 }

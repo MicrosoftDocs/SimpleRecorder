@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Graphics.Capture;
@@ -115,7 +116,7 @@ namespace CaptureEncoder
             _transcoder.HardwareAccelerationEnabled = true;
         }
 
-        private void OnMediaStreamSourceSampleRequested(MediaStreamSource sender, MediaStreamSourceSampleRequestedEventArgs args)
+        unsafe private void OnMediaStreamSourceSampleRequested(MediaStreamSource sender, MediaStreamSourceSampleRequestedEventArgs args)
         {
             if (_isRecording && !_closed)
             {
@@ -124,7 +125,7 @@ namespace CaptureEncoder
 
                     if (args.Request.StreamDescriptor.GetType() == typeof(VideoStreamDescriptor))
                     {
-                        //request video
+                        // Request Video
                         using (var frame = _frameGenerator.WaitForNewFrame())
                         {
                             if (frame == null)
@@ -142,9 +143,26 @@ namespace CaptureEncoder
                     }
                     else if (args.Request.StreamDescriptor.GetType() == typeof(AudioStreamDescriptor))
                     {
-                        //request audio
+                        // Request Audio
+                        MyAudioGraphPlayer player = new MyAudioGraphPlayer();
+                        var frame = player.frameOutputNode.GetFrame();
+                        var audioBuffer = frame.LockBuffer(Windows.Media.AudioBufferAccessMode.Read);
 
+                        IMemoryBufferReference bufferReference = audioBuffer.CreateReference();
 
+                        ((IMemoryBufferByteAccess)bufferReference).GetBuffer(out byte* dataInBytes, out uint capacityInBytes);
+
+                        using (var dataWriter = new DataWriter())
+                        {
+                            byte[] write = new byte[capacityInBytes];
+                            Marshal.Copy((IntPtr)dataInBytes, write, 0, write.Length);
+                            dataWriter.WriteBytes(write);
+
+                            var x = MediaStreamSample.CreateFromBuffer(dataWriter.DetachBuffer(), frame.SystemRelativeTime.Value);
+                            args.Request.Sample= x;
+                        }
+                        
+                        //
                     }
 
 
@@ -167,6 +185,37 @@ namespace CaptureEncoder
                 DisposeInternal();
             }
         }
+
+
+        unsafe MediaStreamSample GetAudioSample()
+        {
+
+
+            //request audio
+            MyAudioGraphPlayer player = new MyAudioGraphPlayer();
+            var frame = player.frameOutputNode.GetFrame();
+            var audioBuffer = frame.LockBuffer(Windows.Media.AudioBufferAccessMode.Read);
+
+            IMemoryBufferReference bufferReference = audioBuffer.CreateReference();
+
+            ((IMemoryBufferByteAccess)bufferReference).GetBuffer(out byte* dataInBytes, out uint capacityInBytes);
+
+            using (var dataWriter = new DataWriter())
+            {
+                byte[] write = new byte[capacityInBytes];
+                Marshal.Copy((IntPtr)dataInBytes, write, 0, write.Length);
+                dataWriter.WriteBytes(write);
+
+                var x = MediaStreamSample.CreateFromBuffer(dataWriter.DetachBuffer(), frame.SystemRelativeTime.Value);
+                return x;
+            }
+
+
+
+
+        }
+
+
 
         private void OnMediaStreamSourceStarting(MediaStreamSource sender, MediaStreamSourceStartingEventArgs args)
         {
