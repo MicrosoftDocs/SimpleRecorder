@@ -123,7 +123,6 @@
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AppSettingHelper.cs" />
     <Compile Include="AudioInterface.cs" />
     <Compile Include="CaptureFrameWait.cs" />
     <Compile Include="Direct3D11Helpers.cs" />
